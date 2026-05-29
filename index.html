@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kuntopiiri Pro</title>
+    <style>
+        body { font-family: sans-serif; padding: 15px; background: #f4f4f9; max-width: 500px; margin: auto; }
+        .nav-container { display: flex; flex-wrap: wrap; justify-content: space-between; margin-bottom: 15px; gap: 5px; }
+        .tab-btn { padding: 12px; flex: 1 1 45%; cursor: pointer; font-weight: bold; font-size: 14px; border: 1px solid #ccc; background: #fff; border-radius: 4px; }
+        .nav-active { background: #2c3e50 !important; color: white !important; }
+        .settings, .exercise, .info-box { background: #fff; padding: 15px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .input-group { display: flex; justify-content: space-between; margin-bottom: 5px; font-weight: bold; align-items: center; }
+        .input-group input[type="number"] { width: 70px; text-align: center; border: 1px solid #ced4da; border-radius: 4px; padding: 5px; }
+        .btn-done { padding: 18px; width: 100%; border: 2px solid #ddd; border-radius: 8px; font-size: 18px; margin-bottom: 8px; cursor: pointer; background: #fff; }
+        .done { background: #27ae60 !important; color: white !important; border-color: #1e8449; }
+        .active { background: #f1c40f !important; border: 4px solid #d4ac0d; color: black; font-weight: bold; }
+        #timer-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; color: white; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
+        #timer-text { font-size: 200px; font-weight: bold; }
+        #next-info { font-size: 32px; margin-top: 20px; color: #f1c40f; text-align: center; }
+        .close-timer { position: absolute; top: 20px; right: 20px; font-size: 60px; cursor: pointer; color: white; }
+        .pulse { animation: pulse 0.5s infinite; color: #e74c3c !important; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        table { width: 100%; border-collapse: collapse; background: white; margin-top: 10px; margin-bottom: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; font-size: 12px; }
+        th { background: #f2f2f2; }
+        #chart-container { background: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        select { padding: 10px; font-size: 14px; border-radius: 4px; border: 1px solid #ccc; width: 100%; margin-bottom: 5px; display: block; background: #fff; }
+        .btn-action { padding: 6px 12px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-secondary { background: #7f8c8d; }
+        .btn-danger { background: #e74c3c; }
+        
+        .video-group { display: flex; gap: 8px; margin-top: 10px; justify-content: center; }
+        .btn-video { flex: 1; text-align: center; padding: 8px 10px; background: #c0392b; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; text-decoration: none; font-size: 12px; }
+        .btn-video.en { background: #2980b9; }
+        .btn-video:hover { opacity: 0.9; }
+
+        textarea { width: 100%; box-sizing: border-box; font-family: monospace; font-size: 11px; padding: 5px; margin-top: 5px; border-radius: 4px; border: 1px solid #ccc; }
+        ol, ul { padding-left: 20px; margin-top: 5px; margin-bottom: 10px; font-size: 14px; line-height: 1.4; }
+        li { margin-bottom: 6px; }
+        .header-inline { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .variation-box { background: #f8f9fa; border-left: 3px solid #7f8c8d; padding: 8px 12px; margin-top: 10px; border-radius: 0 4px 4px 0; font-size: 13px; }
+        .variation-title { font-weight: bold; color: #2c3e50; font-size: 13px; margin-bottom: 3px; }
+    </style>
+</head>
+<body>
+
+<div class="nav-container">
+    <button class="tab-btn" id="btn-instructions" onclick="showTab('instructions')">Ohjeet</button>
+    <button class="tab-btn" id="btn-settings" onclick="showTab('settings')">Asetukset</button>
+    <button class="tab-btn nav-active" id="btn-app" onclick="showTab('app')">Treeni</button>
+    <button class="tab-btn" id="btn-results" onclick="showTab('results')">Kehitys</button>
+</div>
+
+<div id="tab-instructions" style="display:none;">
+    <h3>Pikaohje sovelluksen käyttöön</h3>
+    <div class="info-box" style="background: #ebf5fb; border-left: 5px solid #3498db;">
+        <strong>1. Aloita Tasotestillä:</strong>
+        <ol>
+            <li>Siirry <strong>Treeni</strong>-välilehdelle ja valitse valikosta <strong>Tasotesti</strong>.</li>
+            <li>Tee jokaisessa liikkeessä niin monta puhdasta toistoa kuin pystyt (maksimit).</li>
+            <li>Syötä tulokset kenttiin ja paina <strong>"Tallenna uudet maksimit"</strong>.</li>
+            <li>Sovellus laskee treenien toistomäärät automaattisesti prosenteina maksimeistasi.</li>
+        </ol>
+        
+        <strong>2. Treenin suorittaminen:</strong>
+        <ul>
+            <li>Keltainen painike osoittaa aina **nykyisen vuorossa olevan liikkeen**.</li>
+            <li>Kun saat sarjan tehtyä, <strong>napauta keltaista painiketta</strong>. Se muuttuu vihreäksi ja käynnistää lepoajastimen.</li>
+            <li>Ajastimen aikana näet ruudulla seuraavan liikkeen ja sen toistomäärän. Viimeiset 3 sekuntia vilkkuvat punaisena ja piippaavat.</li>
+            <li>Aktiivinen liike **keskitetään aina automaattisesti** ruudun keskelle, jotta puhelinta on helppo seurata.</li>
+        </ul>
+    </div>
+
+    <h3>Kattava liike- ja videopankki</h3>
+    <div class="settings">
+        <label for="instruction-select" style="font-weight:bold; display:block; margin-bottom:5px;">Valitse pääliike:</label>
+        <select id="instruction-select" onchange="showInstruction()">
+            <option value="0">Kyykky</option>
+            <option value="1">Punnerrus</option>
+            <option value="2">Lantionnosto</option>
+            <option value="3">Selkäojennus</option>
+            <option value="4">Vatsat</option>
+        </select>
+    </div>
+    <div id="instruction-content"></div>
+</div>
+
+<div id="tab-settings" style="display:none;">
+    <h3>Treeniasetukset</h3>
+    <div class="settings">
+        <div class="input-group">
+            <span>Liikkeiden lepo (s):</span>
+            <div>
+                <input type="number" id="cfg-exercise-rest" onchange="saveConfig()">
+                <button class="btn-action btn-secondary" onclick="resetConfig('exercise')">Oletus</button>
+            </div>
+        </div>
+        <div class="input-group" style="margin-top:12px;">
+            <span>Kierrosten lepo (s):</span>
+            <div>
+                <input type="number" id="cfg-round-rest" onchange="saveConfig()">
+                <button class="btn-action btn-secondary" onclick="resetConfig('round')">Oletus</button>
+            </div>
+        </div>
+        <div class="input-group" style="margin-top:15px; border-top: 1px solid #eee; padding-top: 12px;">
+            <span>Äänimerkit ja hälytykset:</span>
+            <input type="checkbox" id="cfg-audio-toggle" onchange="saveConfig()" style="transform: scale(1.3); margin-right:10px;">
+        </div>
+    </div>
+
+    <h3>Varmuuskopiointi (Data)</h3>
+    <div class="settings">
+        <p style="font-size:12px; color:#555; margin-top:0;">Ota treenihistoria ja maksimit talteen tekstimuodossa:</p>
+        <button class="btn-action" onclick="exportData()">Kopioi varmuuskopio</button>
+        
+        <p style="font-size:12px; color:#555; margin-top:15px; margin-bottom:5px;">Palauta varmuuskopio liittämällä koodi tähän:</p>
+        <textarea id="import-area" rows="3" placeholder="Liitä varmuuskopiokoodi tähän..."></textarea>
+        <button class="btn-action btn-secondary" style="margin-top:5px; width:100%;" onclick="importData()">Palauta tiedot</button>
+        
+        <hr style="border:none; border-top:1px solid #eee; margin:15px 0;">
+        <button class="btn-action btn-danger" style="width:100%;" onclick="resetAllData()">Tyhjennä koko sovellus (Reset)</button>
+    </div>
+</div>
+
+<div id="tab-app">
+    <div class="settings">
+        <div id="status-display" style="font-weight: bold; margin-bottom: 15px; color: #2980b9; text-align: center; padding: 10px; background: #ebf5fb; border-radius: 5px;">Ladataan...</div>
+        <div id="max-inputs"></div>
+        <div style="margin-top: 10px;">
+            <select id="week-select" onchange="handleDropdownChange('week')">
+                <option value="-1">Tasotesti (Aseta maksimit)</option>
+                <option value="0">V1 (Sisäänajo)</option>
+                <option value="1">V2 (Kehitys)</option>
+                <option value="2">V3 (Piikkaus)</option>
+                <option value="3">V4 (Kevennys & Testi)</option>
+            </select>
+            <select id="day-select" onchange="handleDropdownChange('day')"></select>
+        </div>
+    </div>
+    <div id="app"></div>
+</div>
+
+<div id="tab-results" style="display:none;">
+    <h3>Kehitystulokset</h3>
+    <div id="history"></div>
+    <h3>Kehityskäyrä</h3>
+    <div id="chart-container">
+        <canvas id="canvas-chart" width="460" height="280" style="width: 100%; height: auto;"></canvas>
+    </div>
+</div>
+
+<div id="timer-overlay">
+    <div class="close-timer" onclick="closeTimer()">X</div>
+    <div id="timer-text">20</div>
+    <div id="next-info"></div>
+</div>
+
+<script>
+    const exercises = ["Kyykky", "Punnerrus", "Lantionnosto", "Selkäojennus", "Vatsat"];
+    const colors = ["#e74c3c", "#3498db", "#2ecc71", "#f1c40f", "#9b59b6"];
+    let audioCtx = null;
+    let wakeLock = null;
+    let previousWeekValue = "0";
+    let previousDayValue = "0";
+
+    const fullExcelInstructions = {
+        0: { 
+            main: { name: "Kyykky", type: "PÄÄLIIKE", text: "Seiso hartioiden levyisessä asennossa. Laskeudu alas ikään kuin istuisit tuolille. Pidä polvet varpaiden suunnassa ja selkä suorana. Nouse takaisin ylös puristamalla pakaroita voimakkaasti yläasennossa.", fi: "https://www.youtube.com/results?search_query=kyykky+tekniikka+omalla+painolla", en: "https://www.youtube.com/results?search_query=bodyweight+squat+technique" },
+            variations: [
+                { name: "Box-kyykky", type: "Helpotus", text: "Asetu seisomaan tuolin, sohvan tai sängynlaidan eteen. Laskeudu hitaasti alas, kunnes pakarat koskettavat alustaa. Pidä paino kantapäillä. Nouse välittömästi takaisin ylös yläasentoon. Keventää polvien rasitusta ja auttaa liikeradan hallinnassa.", fi: "https://www.youtube.com/results?search_query=box+kyykky+tekniikka", en: "https://www.youtube.com/results?search_query=box+squat+technique" },
+                { name: "Askelkyykky", type: "Haaste", text: "Astu pitkä askel eteen tai taakse. Laskeudu suoraan alaspäin, kunnes takimmaisen jalan polvi melkein koskettaa lattiaa. Etummaisen jalan polvi pysyy nilkan yläpuolella. Työnnä itsesi etujalan kantapäällä takaisin alkuasentoon.", fi: "https://www.youtube.com/results?search_query=askelkyykky+tekniikka", en: "https://www.youtube.com/results?search_query=lunge+technique" },
+                { name: "Kyykkyhypyt", type: "Haaste / Syke", text: "Tee tavallinen kyykky, mutta räjähdä ala-asennosta suoraan ylöspäin hyppyyn. Laskeudu pehmeästi ja joustavasti suoraan uuteen kyykkyyn. Nostaa sykettä rajusti ja kehittää voimantuottoa.", fi: "https://www.youtube.com/results?search_query=kyykkyhyppy", en: "https://www.youtube.com/results?search_query=jump+squat+technique" }
+            ]
+        },
+        1: { 
+            main: { name: "Punnerrus", type: "PÄÄLIIKE", text: "Aseta kädet hieman hartioita leveämpään asentoon. Pidä kroppa tiukkana suorana linjana (lankku). Laske rintakehä lähelle lattiaa, kyynärpäät n. 45 asteen kulmassa kylkiin nähden. Työnnä takaisin ylös.", fi: "https://www.youtube.com/results?search_query=punnerrus+tekniikka", en: "https://www.youtube.com/results?search_query=perfect+push+up+form" },
+            variations: [
+                { name: "Punnerrus polvet maassa", type: "Helpotus", text: "Sama tekniikka kuin peruspunnerruksessa, mutta paino on jalkaterien sijaan polvilla. Muista pitää linja suorana polvista päälakeen asti, äläkä jätä lantiota pystyyn.", fi: "https://www.youtube.com/results?search_query=naisten+punnerrus+tekniikka", en: "https://www.youtube.com/results?search_query=knee+push+up+form" },
+                { name: "Punnerrus kädet korotuksella", type: "Helpotus / Reissu", text: "Mitä korkeammalla kädet ovat, sitä kevyempi liike. Aseta kädet esimerkiksi hotellihuoneen sängynlaitaa tai pöytää vasten. Pidä kroppa suorana lankkuna ja punnerra rinta kiinni korotukseen.", fi: "https://www.youtube.com/results?search_query=punnerrus+korotuksella", en: "https://www.youtube.com/results?search_query=incline+push+up+form" },
+                { name: "Timanttipunnerrus", type: "Haaste", text: "Aseta kädet lattialle aivan rinnan alle niin, että peukalot ja etusormet muodostavat timanttikuvion. Punnerra alas pitäen kyynärpäät kiinni kyljissä. Kohdistuu erittäin voimakkaasti ojentajiin.", fi: "https://www.youtube.com/results?search_query=timanttipunnerrus", en: "https://www.youtube.com/results?search_query=diamond+push+up+form" }
+            ]
+        },
+        2: { 
+            main: { name: "Lantionnosto", type: "PÄÄLIIKE", text: "Makaa selälläsi polvet koukussa ja jalkapohjat lattiassa. Nosta lantio ylös kattoa kohti puristamalla pakaroita ja takareisiä voimakkaasti. Pidä yläasennossa 1-2 sekunnin pito ja laske hitaasti alas.", fi: "https://www.youtube.com/results?search_query=lantionnosto+tekniikka", en: "https://www.youtube.com/results?search_query=glute+bridge+form" },
+            variations: [
+                { name: "Yhden jalan lantionnosto", type: "Haaste", text: "Makaa selälläsi polvet koukussa. Suorista toinen jalka kohti kattoa. Nosta lantio ylös vain yhden maassa olevan jalan voimalla. Palauta alas hitaasti. Tekee ihmeitä tasapainolle ja pakaran aktivaatiolle.", fi: "https://www.youtube.com/results?search_query=yhden+jalan+lantionnosto", en: "https://www.youtube.com/results?search_query=single+leg+glute+bridge" },
+                { name: "Jalat korotuksella", type: "Haaste", text: "Aseta jalkapohjat sohvan, sängyn tai tuolin päälle. Nosta lantio ylös. Korotus pidentää liikerataa huomattavasti ja siirtää rasitusta vielä voimakkaammin takareisille.", fi: "https://www.youtube.com/results?search_query=lantionnosto+korokkeelta", en: "https://www.youtube.com/results?search_query=elevated+glute+bridge" },
+                { name: "Lantionnosto lisäpainolla", type: "Haaste / Lisäpaino", text: "Tee perusliike, mutta aseta lantion päälle lisäpaino. This can be kettlebell, weighted backpack or your 15-20kg kid who loves elevator rides. Pidä kiinni painosta liikkeen aikana.", fi: "https://www.youtube.com/results?search_query=lantionnosto+lis%C3%A4painolla", en: "https://www.youtube.com/results?search_query=weighted+glute+bridge" }
+            ]
+        },
+        3: { 
+            main: { name: "Selkäojennus lapavedolla", type: "PÄÄLIIKE", text: "Makaa päinmakuulla kädet ojennettuna eteen. Nosta rintakehää lattiasta ja vedä samalla kyynärpäitä voimakkaasti sivuille kylkiin kiinni (kuin vetäisit leuanvetoa). Purista lapaluut yhteen ja palauta alkuasentoon.", fi: "https://www.youtube.com/results?search_query=selk%C3%A4ojennus+lapaveto", en: "https://www.youtube.com/results?search_query=superman+with+lat+pull+form" },
+            variations: [
+                { name: "Bird-Dog (Ristiinosoitus)", type: "Helpotus", text: "Asetu konttausasentoon. Ojenna samanaikaisesti vastakkainen käsi eteen ja vastakkainen jalka taakse täysin suoraksi linjaksi. Pysäytä hetkeksi ja palauta. Erittäin turvallinen ja ystävällinen alaselälle.", fi: "https://www.youtube.com/results?search_query=bird+dog+liike", en: "https://www.youtube.com/results?search_query=bird+dog+exercise+form" },
+                { name: "Selkänosto kädet niskassa", type: "Eristävä", text: "Tee selkäojennus pitäen sormet kevyesti takaraivolla, jolloin yläselän lihakset joutuvat tekemään enemmän töitä pelkän noston eteen ilman käsien tuomaa vauhtia tai vetoapua.", fi: "https://www.youtube.com/results?search_query=selk%C3%A4ojennus+lattialla", en: "https://www.youtube.com/results?search_query=back+extension+floor" },
+                { name: "Supermies-pito", type: "Haaste", text: "Nosta päinmakuulta sekä kädet suorana eteen että jalat irti lattiasta samanaikaisesti. Pidä koko kropan jännitys yläasennossa staattisesti 2-3 sekuntia jokaisella toistolla.", fi: "https://www.youtube.com/results?search_query=supermies+liike", en: "https://www.youtube.com/results?search_query=superman+hold+exercise" }
+            ]
+        },
+        4: { 
+            main: { name: "Vatsarutistus", type: "PÄÄLIIKE", text: "Makaa selällään polvet koukussa. Paina alaselkä lattiaan. Rutista ylävartaloa ylös niin, että vain hartiat ja lapaluut nousevat irti maasta. Keskity puhtaaseen vatsalihaspuristukseen – älä revi niskasta.", fi: "https://www.youtube.com/results?search_query=vatsarutistus+tekniikka", en: "https://www.youtube.com/results?search_query=how+to+do+crunches+properly" },
+            variations: [
+                { name: "Polkupyörävatsat", type: "Variaatio", text: "Makaa selälläsi jalat ilmassa 90 asteen kulmassa. Tuo vuorotellen vastakkainen kyynärpää ja vastakkainen polvi yhteen samalla, kun suoristat toisen jalan. Aktivoi loistavasti vinot vatsalihakset.", fi: "https://www.youtube.com/results?search_query=polkupy%C3%B6r%C3%A4vatsat", en: "https://www.youtube.com/results?search_query=bicycle+crunches+form" },
+                { name: "Lankku", type: "Staattinen", text: "Tee toistojen sijaan staattinen pito. Kyynärvarret ja varpaat lattiassa, kroppa täysin suorana linjana. Purista pakaroita ja vatsaa. Esim. 30–60 sekunnin puhdas pito vastaa yhtä toistosarjaa.", fi: "https://www.youtube.com/results?search_query=lankku+tekniikka", en: "https://www.youtube.com/results?search_query=plank+form" },
+                { name: "Jalkojen nostot", type: "Haaste", text: "Makaa selälläsi kädet pakaroiden alla tukemassa. Pidä jalat suorina ja nosta ne hitaasti kohti kattoa. Laske jarruttaen alas, äläkä päästä kantapäitä lattiaan asti ennen seuraavaa toistoa. Kohdistuu alavatsaan.", fi: "https://www.youtube.com/results?search_query=jalkojen+nostot+makuulla", en: "https://www.youtube.com/results?search_query=lying+leg+raises+form" }
+            ]
+        }
+    };
+
+    const percentMatrix = {
+        0: {
+            0: [0.40, 0.50, 0.45, 0.40, 0.40],
+            1: [0.30, 0.40, 0.35, 0.30, 0.30],
+            2: [0.45, 0.55, 0.50, 0.45, 0.45]
+        },
+        1: {
+            0: [0.45, 0.55, 0.50, 0.45, 0.45],
+            1: [0.35, 0.45, 0.40, 0.35, 0.35],
+            2: [0.50, 0.60, 0.55, 0.50, 0.50]
+        },
+        2: {
+            0: [0.50, 0.60, 0.55, 0.50, 0.50],
+            1: [0.40, 0.50, 0.45, 0.40, 0.40],
+            2: [0.55, 0.65, 0.60, 0.55, 0.55]
+        },
+        3: {
+            0: [0.30, 0.40, 0.30],
+            1: [],
+            2: []
+        }
+    };
+
+    document.getElementById('app').addEventListener('click', function(e) {
+        if (e.target && e.target.getAttribute('data-type') === 'exercise') {
+            handleExerciseClick(e.target);
+        }
+    });
+
+    function showTab(tab) {
+        const tabs = ['app', 'results', 'instructions', 'settings'];
+        tabs.forEach(t => {
+            document.getElementById('tab-' + t).style.display = t === tab ? 'block' : 'none';
+            document.getElementById('btn-' + t).className = 'tab-btn ' + (t === tab ? 'nav-active' : '');
+        });
+        if(tab === 'results') { renderHistory(); drawChart(); }
+        if(tab === 'instructions') { showInstruction(); }
+        if(tab === 'app') { setTimeout(updateActive, 100); }
+    }
+
+    function showInstruction() {
+        const idx = document.getElementById('instruction-select').value;
+        const group = fullExcelInstructions[idx];
+        
+        let html = `
+            <div class="info-box" style="border-left: 5px solid #e74c3c; margin-top: 10px;">
+                <span style="font-weight:bold; color:#e74c3c; font-size:11px; letter-spacing:0.5px;">${group.main.type}</span>
+                <h4 style="margin: 3px 0 8px 0; color:#2c3e50;">${group.main.name}</h4>
+                <p style="font-size:14px; margin:0; line-height:1.4; color:#333;">${group.main.text}</p>
+                <div class="video-group">
+                    <a href="${group.main.fi}" target="_blank" class="btn-video">Katso video (Suomi)</a>
+                    <a href="${group.main.en}" target="_blank" class="btn-video en">Katso video (Englanti)</a>
+                </div>
+            </div>
+            <h4 style="margin: 15px 0 5px 5px; color:#7f8c8d; font-size:14px;">Skaalaukset & vaihtoehdot:</h4>
+        `;
+
+        group.variations.forEach(v => {
+            html += `
+                <div class="variation-box">
+                    <div class="variation-title">${v.name} <span style="font-weight:normal; font-size:11px; color:#7f8c8d;">(${v.type})</span></div>
+                    <p style="margin:0 0 8px 0; line-height:1.4; color:#555;">${v.text}</p>
+                    <div class="video-group" style="margin-top:5px;">
+                        <a href="${v.fi}" target="_blank" class="btn-video" style="padding:4px 8px; font-size:11px;">Video (FI)</a>
+                        <a href="${v.en}" target="_blank" class="btn-video en" style="padding:4px 8px; font-size:11px;">Video (EN)</a>
+                    </div>
+                </div>
+            `;
+        });
+
+        document.getElementById('instruction-content').innerHTML = html;
+    }
+
+    function isWorkoutInProgress() {
+        let completed = JSON.parse(localStorage.getItem('completedSteps')) || [];
+        let week = parseInt(previousWeekValue);
+        let day = parseInt(previousDayValue);
+        if(week < 0) return false;
+        
+        let roundsCount = (week === 3 && day === 0) ? 3 : 5;
+        let count = 0;
+        for(let r=0; r<roundsCount; r++) {
+            for(let i=0; i<exercises.length; i++) {
+                if(completed.includes(`w${week}d${day}r${r}i${i}`)) count++;
+            }
+        }
+        return count > 0 && count < (roundsCount * exercises.length);
+    }
+
+    function handleDropdownChange(type) {
+        const weekSelect = document.getElementById('week-select');
+        const daySelect = document.getElementById('day-select');
+
+        if (isWorkoutInProgress()) {
+            if (!confirm("Huomio! Sinulla on edellinen treeni vielä kesken. Haluatko varmasti siirtyä uuteen treeniin?")) {
+                weekSelect.value = previousWeekValue;
+                if (type === 'week') updateDayOptions(false);
+                daySelect.value = previousDayValue;
+                return;
+            }
+        }
+
+        if (type === 'week') updateDayOptions(true);
+
+        previousWeekValue = weekSelect.value;
+        previousDayValue = daySelect.value;
+        renderApp();
+    }
+
+    function playTone(freq, duration) {
+        if (localStorage.getItem('cfg_audio') === 'false') return;
+        try {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            osc.start(); osc.stop(audioCtx.currentTime + duration);
+        } catch(e) { console.log("Ääni estetty."); }
+    }
+
+    async function requestWakeLock() {
+        if ('wakeLock' in navigator) {
+            try { wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
+        }
+    }
+    function releaseWakeLock() { if (wakeLock !== null) { wakeLock.release(); wakeLock = null; } }
+
+    function loadConfig() {
+        document.getElementById('cfg-exercise-rest').value = localStorage.getItem('cfg_ex_rest') || 20;
+        document.getElementById('cfg-round-rest').value = localStorage.getItem('cfg_rnd_rest') || 90;
+        document.getElementById('cfg-audio-toggle').checked = localStorage.getItem('cfg_audio') !== 'false';
+    }
+
+    function saveConfig() {
+        localStorage.setItem('cfg_ex_rest', document.getElementById('cfg-exercise-rest').value);
+        localStorage.setItem('cfg_rnd_rest', document.getElementById('cfg-round-rest').value);
+        localStorage.setItem('cfg_audio', document.getElementById('cfg-audio-toggle').checked);
+    }
+
+    function resetConfig(type) {
+        if(type === 'exercise') document.getElementById('cfg-exercise-rest').value = 20;
+        else document.getElementById('cfg-round-rest').value = 90;
+        saveConfig();
+    }
+
+    function exportData() {
+        const backup = {
+            maxes: JSON.parse(localStorage.getItem('maxes')) || [0,0,0,0,0],
+            history: JSON.parse(localStorage.getItem('kuntopiiriHistory')) || [],
+            completed: JSON.parse(localStorage.getItem('completedSteps')) || []
+        };
+        const str = btoa(JSON.stringify(backup));
+        navigator.clipboard.writeText(str);
+        alert("Varmuuskopiokoodi kopioitu leikepöydälle!");
+    }
+
+    function importData() {
+        const str = document.getElementById('import-area').value.trim();
+        if(!str) return alert("Liitä koodi ensin kenttään!");
+        try {
+            const data = JSON.parse(atob(str));
+            if(data.maxes) localStorage.setItem('maxes', JSON.stringify(data.maxes));
+            if(data.history) localStorage.setItem('kuntopiiriHistory', JSON.stringify(data.history));
+            if(data.completed) localStorage.setItem('completedSteps', JSON.stringify(data.completed));
+            alert("Tiedot palautettu!");
+            location.reload();
+        } catch(e) { alert("Virheellinen koodi."); }
+    }
+
+    function resetAllData() {
+        if(confirm("Haluatko varmasti poistaa KAIKKI treenitiedot?")) {
+            localStorage.clear(); location.reload();
+        }
+    }
+
+    function renderHistory() {
+        let history = JSON.parse(localStorage.getItem('kuntopiiriHistory')) || [];
+        let html = '<table><tr><th>Liike</th>' + history.map(h => `<th>${h.date}</th>`).join('') + '</tr>';
+        exercises.forEach((ex, i) => {
+            html += `<tr><td><strong>${ex}</strong></td>` + history.map(h => `<td>${h.data[i]}</td>`).join('') + '</tr>';
+        });
+        document.getElementById('history').innerHTML = html + '</table>';
+    }
+
+    function updateDayOptions(resetToFirst = true) {
+        const week = parseInt(document.getElementById('week-select').value);
+        const daySelect = document.getElementById('day-select');
+        if (week === -1) { daySelect.style.display = 'none'; return; }
+        daySelect.style.display = 'block'; daySelect.innerHTML = '';
+
+        if (week === 3) {
+            daySelect.innerHTML = `<option value="0">T1 (Kevyt)</option><option value="1">T2 (Totaalilepo)</option><option value="2">T3 (UUSI MAKSIMITESTI)</option>`;
+        } else {
+            daySelect.innerHTML = `<option value="0">T1 (Perus)</option><option value="1">T2 (Kevyt)</option><option value="2">T3 (Raskas)</option>`;
+        }
+        if (resetToFirst) daySelect.value = "0";
+    }
+
+    function calculateReps(max, week, day, round) {
+        if (!max || max === 0) return 0;
+        const repsList = percentMatrix[week]?.[day];
+        if (!repsList || round >= repsList.length) return 0;
+        return Math.max(1, Math.round(max * repsList[round]));
+    }
+
+    function getNextWorkoutIndices() {
+        let completed = JSON.parse(localStorage.getItem('completedSteps')) || [];
+        let maxes = JSON.parse(localStorage.getItem('maxes'));
+        if (!maxes || maxes.reduce((a, b) => a + b, 0) === 0) return { week: "-1", day: "0" };
+
+        for(let w=0; w<4; w++) {
+            for(let d=0; d<3; d++) {
+                if(w === 3 && d === 1) {
+                    let prevDone = true; for(let r=0; r<3; r++) { for(let i=0; i<exercises.length; i++) { if(!completed.includes(`w3d0r${r}i${i}`)) prevDone = false; } }
+                    if(prevDone && !completed.includes('w3d1_rest_done')) return { week: "3", day: "1" };
+                    continue;
+                }
+                if(w === 3 && d === 2) {
+                    let prevDone = true; for(let r=0; r<3; r++) { for(let i=0; i<exercises.length; i++) { if(!completed.includes(`w3d0r${r}i${i}`)) prevDone = false; } }
+                    if(prevDone) return { week: "3", day: "2" };
+                    continue;
+                }
+
+                let roundsCount = (w === 3 && d === 0) ? 3 : 5;
+                for(let r=0; r<roundsCount; r++) {
+                    for(let i=0; i<exercises.length; i++) {
+                        const id = `w${w}d${d}r${r}i${i}`;
+                        if(!completed.includes(id)) return { week: String(w), day: String(d) };
+                    }
+                }
+            }
+        }
+        return { week: "3", day: "2" };
+    }
+
+    function updateStatusDisplay() {
+        const statusDiv = document.getElementById('status-display');
+        let completed = JSON.parse(localStorage.getItem('completedSteps')) || [];
+        let maxes = JSON.parse(localStorage.getItem('maxes')) || [0, 0, 0, 0, 0];
+        
+        let target = getNextWorkoutIndices();
+        let w = parseInt(target.week);
+        let d = parseInt(target.day);
+
+        if (w === -1) { statusDiv.innerText = "Aloita tekemällä Tasotesti!"; return; }
+        if (w === 3 && d === 1) { statusDiv.innerText = `Seuraavaksi: Viikko 4, Totaalilepo`; return; }
+        if (w === 3 && d === 2) { statusDiv.innerText = `Seuraavaksi: Viikko 4, Uusi maksimitesti`; return; }
+
+        let roundsCount = (w === 3 && d === 0) ? 3 : 5;
+        for(let r=0; r<roundsCount; r++) {
+            for(let i=0; i<exercises.length; i++) {
+                const id = `w${w}d${d}r${r}i${i}`;
+                if(!completed.includes(id)) {
+                    let reps = calculateReps(maxes[i], w, d, r);
+                    let amrapTxt = (w < 3 && r === 4) ? " tai yli (AMRAP)" : "";
+                    let dayTxt = d === 0 ? "Perus" : d === 1 ? "Kevyt" : "Raskas";
+                    if(w === 3) dayTxt = "Kevyt";
+                    statusDiv.innerText = `Seuraavaksi: V${w+1} T${d+1} (${dayTxt}) K${r+1}: ${exercises[i]} (${reps}${amrapTxt})`;
+                    return;
+                }
+            }
+        }
+    }
+
+    function renderApp() {
+        const app = document.getElementById('app');
+        const daySelect = document.getElementById('day-select');
+        app.innerHTML = '';
+        const week = parseInt(document.getElementById('week-select').value);
+        const day = parseInt(document.getElementById('day-select').value);
+        updateStatusDisplay();
+
+        if (week === -1) {
+            daySelect.style.display = 'none';
+            app.innerHTML = `
+                <div class="header-inline">
+                    <h3>Tasotesti</h3>
+                    <button class="btn-action" onclick="showTab('instructions')">Pikaohjeet</button>
+                </div>
+                <p>Tee maksimitoistot ja syötä tulokset alle:</p>
+            `;
+            exercises.forEach((ex, i) => app.innerHTML += `<div class='exercise'><strong>${ex}</strong>: <input type='number' id='test-${i}' value='' placeholder='Maks' style='width:60px; text-align:center;'></div><br>`);
+            app.innerHTML += `<button class='btn-done' style='background:#f1c40f; font-weight:bold;' onclick='saveNewMaxes()'>Tallenna uudet maksimit</button>`;
+            return;
+        }
+
+        daySelect.style.display = 'inline-block';
+
+        if (week === 3 && day === 1) { 
+            app.innerHTML = "<h3>LEPOPÄIVÄ</h3><p>Totaalilepo. Anna hermoston palautua raikkaaksi loppuviikon testiä varten!</p>"; 
+            app.innerHTML += `<button class='btn-done' style='background:#27ae60; color:white;' onclick='markRestDayDone()'>Merkitse lepopäivä pidetyksi</button>`;
+            return; 
+        }
+        if (week === 3 && day === 2) { app.innerHTML = "<h3>UUSI MAKSIMITESTI</h3><p>Sykli ohi! On aika mitata uusi lähtötasosi.</p><button class='btn-done' style='background:#f1c40f; font-weight:bold;' onclick=\"document.getElementById('week-select').value='-1'; handleDropdownChange('week');\">Mene Tasotestiin</button>"; return; }
+
+        let completed = JSON.parse(localStorage.getItem('completedSteps')) || [];
+        let maxes = JSON.parse(localStorage.getItem('maxes')) || [0, 0, 0, 0, 0];
+        let roundsCount = (week === 3 && day === 0) ? 3 : 5;
+
+        for(let r=0; r<roundsCount; r++) {
+            app.innerHTML += `<h4>Kierros ${r+1}</h4>`;
+            exercises.forEach((ex, i) => {
+                const id = `w${week}d${day}r${r}i${i}`;
+                const reps = calculateReps(maxes[i], week, day, r);
+                let amrapTxt = (week < 3 && r === 4) ? " tai yli (AMRAP)" : " toistoa";
+                app.innerHTML += `<button id="${id}" data-type="exercise" data-idx="${i}" data-round="${r}" class="btn-done ${completed.includes(id) ? 'done' : ''}">${ex}<br>${reps}${amrapTxt}</button>`;
+            });
+        }
+        setTimeout(updateActive, 50);
+    }
+
+    function markRestDayDone() {
+        let completed = JSON.parse(localStorage.getItem('completedSteps')) || [];
+        completed.push('w3d1_rest_done');
+        localStorage.setItem('completedSteps', JSON.stringify(completed));
+        autoNavigateNextWorkout();
+    }
+
+    function autoNavigateNextWorkout() {
+        let next = getNextWorkoutIndices();
+        document.getElementById('week-select').value = next.week;
+        updateDayOptions(false);
+        document.getElementById('day-select').value = next.day;
+        previousWeekValue = next.week; previousDayValue = next.day;
+        renderApp();
+    }
+
+    function handleExerciseClick(btn) {
+        let buttons = Array.from(document.querySelectorAll('.btn-done'));
+        let nextValid = buttons.find(b => b.getAttribute('data-type') === 'exercise' && !b.classList.contains('done'));
+        
+        if (btn !== nextValid && !btn.classList.contains('done')) {
+            if(!confirm("Sinulla on edellinen liike kesken. Haluatko varmasti hypätä tähän?")) return;
+        }
+
+        if(btn.classList.contains('done')) return;
+        btn.classList.add('done');
+        let completed = JSON.parse(localStorage.getItem('completedSteps')) || [];
+        completed.push(btn.id);
+        localStorage.setItem('completedSteps', JSON.stringify(completed));
+        updateStatusDisplay(); requestWakeLock();
+
+        let currentIdx = parseInt(btn.getAttribute('data-idx'));
+        let currentRound = parseInt(btn.getAttribute('data-round'));
+        let week = parseInt(document.getElementById('week-select').value);
+        let day = parseInt(document.getElementById('day-select').value);
+        
+        let nextIdx = (currentIdx + 1) % exercises.length;
+        let nextRound = nextIdx === 0 ? currentRound + 1 : currentRound;
+        
+        let maxes = JSON.parse(localStorage.getItem('maxes')) || [0, 0, 0, 0, 0];
+        let nextReps = calculateReps(maxes[nextIdx], week, day, nextRound);
+        let maxRounds = (week === 3 && day === 0) ? 3 : 5;
+
+        let exerciseRest = parseInt(localStorage.getItem('cfg_ex_rest')) || 20;
+        let roundRest = parseInt(localStorage.getItem('cfg_rnd_rest')) || 90;
+
+        const overlay = document.getElementById('timer-overlay');
+        const timerText = document.getElementById('timer-text');
+        overlay.style.display = 'flex';
+        
+        let sec = (currentIdx === exercises.length - 1) ? roundRest : exerciseRest;
+        timerText.innerText = sec;
+        
+        if (nextRound < maxRounds) {
+            let amrapTxt = (week < 3 && nextRound === 4) ? " tai yli (AMRAP)" : " toistoa";
+            document.getElementById('next-info').innerText = `Seuraava: ${exercises[nextIdx]} (${nextReps}${amrapTxt})`;
+        } else {
+            document.getElementById('next-info').innerText = "Treeni valmis!";
+        }
+
+        window.timer = setInterval(() => {
+            sec--;
+            timerText.innerText = sec;
+            if(sec <= 3 && sec > 0) { playTone(800, 0.1); timerText.classList.add('pulse'); }
+            if(sec <= 0) { 
+                playTone(400, 0.5); clearInterval(window.timer); 
+                overlay.style.display = 'none'; timerText.classList.remove('pulse');
+                releaseWakeLock();
+                if (nextRound >= maxRounds) {
+                    alert("Upeaa työtä! Treeni suoritettu onnistuneesti loppuun.");
+                    autoNavigateNextWorkout();
+                }
+            }
+        }, 1000);
+        updateActive();
+    }
+
+    function saveNewMaxes() {
+        let newMaxes = exercises.map((ex, i) => parseInt(document.getElementById('test-'+i).value) || 0);
+        if(newMaxes.reduce((a,b)=>a+b, 0) === 0) return alert("Syötä tulokset ennen tallentamista!");
+        
+        let history = JSON.parse(localStorage.getItem('kuntopiiriHistory')) || [];
+        history.push({ date: new Date().toLocaleDateString().slice(0,5), data: newMaxes });
+        localStorage.setItem('kuntopiiriHistory', JSON.stringify(history));
+        localStorage.setItem('maxes', JSON.stringify(newMaxes));
+        localStorage.removeItem('completedSteps');
+        
+        const container = document.getElementById('max-inputs');
+        container.innerHTML = '';
+        exercises.forEach((ex, i) => { container.innerHTML += `<div class='input-group'>${ex}: <input type='number' id='max-${i}' value='${newMaxes[i]}' readonly></div>`; });
+
+        alert("Maksit tallennettu! Siirrytään Viikolle 1.");
+        autoNavigateNextWorkout();
+    }
+
+    function updateActive() {
+        if (document.getElementById('tab-app').style.display === 'none') return;
+        
+        document.querySelectorAll('.btn-done').forEach(b => b.classList.remove('active'));
+        let buttons = Array.from(document.querySelectorAll('.btn-done'));
+        for(let btn of buttons) { 
+            if(btn.getAttribute('data-type') === 'exercise' && !btn.classList.contains('done')) { 
+                btn.classList.add('active'); 
+                btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                break; 
+            } 
+        }
+    }
+
+    function drawChart() {
+        const canvas = document.getElementById('canvas-chart'); if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        let history = JSON.parse(localStorage.getItem('kuntopiiriHistory')) || [];
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (history.length === 0) { ctx.fillStyle = "#555"; ctx.font = "14px sans-serif"; ctx.fillText("Ei vielä tuloksia kuvaajaa varten.", 50, 130); return; }
+
+        const paddingLeft = 40;
+        const paddingRight = 20;
+        const paddingTop = 30;
+        const paddingBottom = 60; 
+        
+        const graphHeight = canvas.height - paddingTop - paddingBottom; 
+        const graphWidth = canvas.width - paddingLeft - paddingRight;
+
+        let maxVal = -Infinity;
+        let minVal = Infinity;
+        
+        history.forEach(h => h.data.forEach(v => {
+            if (v > maxVal) maxVal = v;
+            if (v < minVal) minVal = v;
+        }));
+
+        if (maxVal === -Infinity) { maxVal = 50; minVal = 0; }
+        if (maxVal === minVal) { maxVal += 5; minVal = Math.max(0, minVal - 5); }
+
+        let range = maxVal - minVal;
+        maxVal = Math.ceil(maxVal + range * 0.1);
+        minVal = Math.floor(Math.max(0, minVal - range * 0.1));
+        
+        let finalRange = maxVal - minVal;
+
+        ctx.strokeStyle = "#ddd"; ctx.lineWidth = 1;
+        for (let i = 0; i <= 4; i++) {
+            let y = paddingTop + (graphHeight / 4) * i; 
+            let val = maxVal - (finalRange / 4) * i;
+            
+            ctx.fillStyle = "#888"; ctx.font = "10px sans-serif";
+            ctx.fillText(Math.round(val), 10, y + 4);
+            
+            ctx.beginPath(); 
+            ctx.moveTo(paddingLeft, y); 
+            ctx.lineTo(canvas.width - paddingRight, y); 
+            ctx.stroke();
+        }
+        
+        const xStep = history.length > 1 ? graphWidth / (history.length - 1) : graphWidth;
+
+        exercises.forEach((ex, exIdx) => {
+            ctx.strokeStyle = colors[exIdx]; ctx.lineWidth = 3; ctx.beginPath();
+            history.forEach((h, hIdx) => {
+                let x = paddingLeft + hIdx * xStep; 
+                let y = paddingTop + graphHeight - ((h.data[exIdx] - minVal) / finalRange) * graphHeight;
+                
+                if (hIdx === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                ctx.fillStyle = colors[exIdx]; ctx.fillRect(x - 3, y - 3, 6, 6);
+            });
+            ctx.stroke();
+        });
+
+        ctx.fillStyle = "#555"; ctx.font = "10px sans-serif";
+        history.forEach((h, hIdx) => { 
+            let x = paddingLeft + hIdx * xStep; 
+            ctx.fillText(h.date, x - 12, paddingTop + graphHeight + 18); 
+        });
+
+        let startY = canvas.height - 30;
+        let startX = 20;
+        let itemWidth = 90; 
+
+        exercises.forEach((ex, i) => {
+            let currentX = startX + (i % 3) * itemWidth;
+            let currentY = startY + Math.floor(i / 3) * 16;
+            
+            ctx.fillStyle = colors[i]; 
+            ctx.fillRect(currentX, currentY, 12, 12); 
+            
+            ctx.fillStyle = "#333"; ctx.font = "bold 11px sans-serif";
+            ctx.fillText(ex, currentX + 16, currentY + 10); 
+        });
+    }
+
+    function closeTimer() { clearInterval(window.timer); document.getElementById('timer-overlay').style.display = 'none'; document.getElementById('timer-text').classList.remove('pulse'); releaseWakeLock(); }
+
+    const savedMaxes = JSON.parse(localStorage.getItem('maxes')) || [0, 0, 0, 0, 0];
+    const container = document.getElementById('max-inputs');
+    exercises.forEach((ex, i) => { container.innerHTML += `<div class='input-group'>${ex}: <input type='number' id='max-${i}' value='${savedMaxes[i]}' readonly></div>`; });
+
+    window.onload = () => {
+        loadConfig();
+        let startPoint = getNextWorkoutIndices();
+        document.getElementById('week-select').value = startPoint.week;
+        updateDayOptions(false);
+        document.getElementById('day-select').value = startPoint.day;
+        previousWeekValue = startPoint.week; previousDayValue = startPoint.day;
+        
+        showTab('app');
+        renderApp();
+    };
+</script>
+</body>
+</html>
